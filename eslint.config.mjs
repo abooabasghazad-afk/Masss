@@ -13,6 +13,7 @@ export default [
         setTimeout: 'readonly',
         console: 'readonly',
         Intl: 'readonly',
+        URLSearchParams: 'readonly',
         Math: 'readonly',
       },
     },

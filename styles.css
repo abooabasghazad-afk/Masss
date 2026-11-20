@@ -96,6 +96,26 @@ canvas#game:active {
   place-items: center;
 }
 
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-btn svg .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+#btn-sound.muted .waves,
+#btn-sound:not(.muted) .slash {
+  display: none;
+}
+
 .icon-btn:hover {
   background: #fff;
   transform: translateY(-1px);
@@ -374,9 +394,9 @@ canvas#game:active {
   right: 24%;
   width: 24px;
   height: 24px;
-  background: #fff;
   border-radius: 50%;
-  box-shadow: inset -6px -2px 0 -4px #241a1a;
+  background: radial-gradient(circle at 62% 52%, #241a1a 0 34%, #ffffff 36%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
 }
 
 .logo-beak {

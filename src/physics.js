@@ -59,6 +59,7 @@ export class PhysWorld {
 
     this.entities = [];
     this.bird = null;
+    this.maxBirdImpact = 0;
     // اجسامی که باید بعد از پایان گام فیزیک حذف شوند
     this._pendingRemoval = [];
 
@@ -181,6 +182,7 @@ export class PhysWorld {
     body.entity = ent;
     body.addEventListener('collide', (e) => {
       const speed = Math.abs(e.contact.getImpactVelocityAlongNormal());
+      if (speed > this.maxBirdImpact) this.maxBirdImpact = speed;
       if (speed > 4 && this.onImpact) this.onImpact(ent, speed, body.position);
     });
     this.world.addBody(body);
@@ -225,14 +227,14 @@ export class PhysWorld {
 
     if (ent.kind === 'pig') {
       if (speed < 3.2) return;
-      const dmg = (speed - 3.2) * factor * 7;
+      const dmg = (speed - 3.2) * factor * 9.5;
       ent.health -= dmg;
       ent.hurtFlash = 1;
       if (this.onImpact) this.onImpact(ent, speed, ent.body.position);
       if (ent.health <= 0) this._killPig(ent);
     } else if (ent.kind === 'block') {
       if (speed < 3.2) return;
-      const dmg = (speed - 3.2) * factor * 10;
+      const dmg = (speed - 3.2) * factor * 15;
       ent.health -= dmg;
       if (this.onImpact) this.onImpact(ent, speed, ent.body.position);
       if (ent.health <= 0) this._breakBlock(ent);

@@ -28,7 +28,14 @@
 
       <div class="hud-side hud-end">
         <div id="birds-left" class="birds" aria-label="پرنده‌های باقی‌مانده"></div>
-        <button class="icon-btn" id="btn-sound" title="صدا" aria-label="صدا">🔊</button>
+        <button class="icon-btn" id="btn-sound" title="صدا" aria-label="صدا">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path class="fill" d="M4 9.5h3.2L12 5.6v12.8L7.2 14.5H4z" />
+            <path class="waves" d="M15.4 8.6a4.6 4.6 0 0 1 0 6.8" />
+            <path class="waves" d="M18 6a8 8 0 0 1 0 12" />
+            <path class="slash" d="M15.5 9.5l5 5M20.5 9.5l-5 5" />
+          </svg>
+        </button>
         <button class="icon-btn" id="btn-restart" title="شروع دوباره" aria-label="شروع دوباره">↻</button>
       </div>
     </header>
@@ -42,7 +49,7 @@
       <button data-cam="out" title="دورتر">−</button>
     </div>
 
-    <div id="hint" class="hint hidden">پرنده را به عقب بکش و رها کن</div>
+    <div id="hint" class="hint hidden">پرنده را به پایین بکش و رها کن</div>
 
     <div id="popups"></div>
 

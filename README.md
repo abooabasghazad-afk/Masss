@@ -48,8 +48,11 @@ src/scene.js        صحنه، محیط، تیرکمان، مش‌ها، ذرا�
 src/levels.js       داده‌ی چهار مرحله
 src/audio.js        ساخت صداها با WebAudio
 vendor/             سه‌بعدی و فیزیک به‌صورت محلی (بدون CDN)
-tools/              تست‌های سرسری بدون مرورگر
+tools/              تست‌های بدون مرورگر + ابزارهای اسکرین‌شات اختیاری
 ```
+
+ابزارهای تصویری داخل `tools/` (مثل `playtest.mjs` و `shot-test.mjs`) اختیاری‌اند و برای اجرا
+به Chromium نیاز دارند: `npm i --no-save puppeteer-core @sparticuz/chromium`.
 
 ## تست
 

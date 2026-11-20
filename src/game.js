@@ -25,6 +25,12 @@ const STORAGE_KEY = 'angry3d.progress.v1';
 const faNum = new Intl.NumberFormat('fa-IR');
 const fmt = (n) => faNum.format(Math.round(n));
 const clamp = THREE.MathUtils.clamp;
+const urlParams = new URLSearchParams(window.location.search);
+// پارامترهای اختیاری برای تست: ?level=2&cam=dist,yaw,pitch,tx,ty,tz
+const camOverride = (urlParams.get('cam') || '')
+  .split(',')
+  .map(Number)
+  .filter((n) => Number.isFinite(n));
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -371,9 +377,11 @@ function loadLevel(index) {
     bindMesh(ent, wrapper);
   }
 
+  const portrait = window.innerWidth / Math.max(1, window.innerHeight) < 1.1;
   const [tx, ty, tz] = level.target;
-  rig.desiredTarget.set(tx, ty, tz);
-  rig.target.set(tx, ty, tz);
+  // در حالت عمودی، مرکز دید کمی به سمت تیرکمان می‌رود تا هر دو سر میدان دیده شوند
+  rig.desiredTarget.set(tx - (portrait ? 3 : 0), ty, tz);
+  rig.target.copy(rig.desiredTarget);
   applyFraming(true);
 
   els.hud.classList.remove('hidden');
@@ -476,7 +484,7 @@ function moveAim(e) {
   const dist = camera.position.distanceTo(SLING_ANCHOR);
   const perPx =
     (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * dist) / window.innerHeight;
-  const k = perPx * 0.5;
+  const k = perPx * 0.62;
 
   const fwd = shotForward();
   const side = _side.crossVectors(fwd, UP).normalize();
@@ -557,7 +565,7 @@ function endShot() {
     phys.removeEntity(ent);
   }
   state.mode = 'settling';
-  state.settleTimer = 1.15;
+  state.settleTimer = 0.9;
 }
 
 function updateFlight(dt) {
@@ -572,7 +580,7 @@ function updateFlight(dt) {
     return;
   }
   state.flightTime += dt;
-  if (state.flightTime > 3.2) {
+  if (state.flightTime > 1.8) {
     // بعد از چند ثانیه، پرنده سریع‌تر می‌ایستد تا نوبت بعدی طول نکشد
     birdEnt.body.linearDamping = 0.45;
     birdEnt.body.angularDamping = 0.7;
@@ -581,7 +589,7 @@ function updateFlight(dt) {
   if (speed < 1.0) state.stillTimer += dt;
   else state.stillTimer = 0;
 
-  if ((state.stillTimer > 0.85 && state.flightTime > 0.6) || state.flightTime > 7.5) {
+  if ((state.stillTimer > 0.5 && state.flightTime > 0.4) || state.flightTime > 5) {
     endShot();
   }
 }
@@ -803,7 +811,7 @@ els.btnSound.addEventListener('click', () => {
   sfx.init();
   progress.muted = !progress.muted;
   sfx.setMuted(progress.muted);
-  els.btnSound.textContent = progress.muted ? '🔇' : '🔊';
+  els.btnSound.classList.toggle('muted', progress.muted);
   saveProgress();
 });
 
@@ -836,12 +844,23 @@ function updateCamera(dt) {
 }
 
 let idleTime = 0;
+const _faceDir = new THREE.Vector3();
+const _birdAxis = new THREE.Vector3(1, 0, 0);
+const _faceQuat = new THREE.Quaternion();
 function animateBirdIdle(dt) {
   idleTime += dt;
   if (state.mode === 'ready' && state.birdMesh) {
     state.birdMesh.position.copy(SLING_ANCHOR);
     state.birdMesh.position.y += Math.sin(idleTime * 3.2) * 0.05;
-    state.birdMesh.rotation.set(0, Math.sin(idleTime * 1.6) * 0.3, Math.sin(idleTime * 2.4) * 0.05);
+    // پرنده در حالت آماده‌باش رو به دوربین می‌ایستد
+    _faceDir.copy(camera.position).sub(state.birdMesh.position);
+    _faceDir.y = 0;
+    if (_faceDir.lengthSq() > 0.001) {
+      _faceDir.normalize();
+      _faceQuat.setFromUnitVectors(_birdAxis, _faceDir);
+      state.birdMesh.quaternion.copy(_faceQuat);
+      state.birdMesh.rotateY(Math.sin(idleTime * 1.6) * 0.15);
+    }
   }
 }
 
@@ -864,28 +883,41 @@ function tickTimers(dt) {
 
 function framingForViewport() {
   const aspect = window.innerWidth / Math.max(1, window.innerHeight);
-  const fov = aspect < 1.1 ? 62 : 48;
+  const portrait = aspect < 1.1;
+  const fov = portrait ? 58 : 26;
   const vHalf = THREE.MathUtils.degToRad(fov) / 2;
   const hHalf = Math.atan(Math.tan(vHalf) * aspect);
   const half = Math.min(vHalf, hHalf);
-  const radius = 14; // شعاع ناحیه‌ی بازی
-  const dist = clamp(radius / Math.sin(half), 30, 62);
-  return { fov, dist };
+  // شعاع ناحیه‌ی بازی
+  const radius = portrait ? 8 : 10;
+  const dist = clamp(radius / Math.sin(half), 30, 72);
+  return { fov, dist, portrait };
 }
 
 /** دوربین را طوری تنظیم می‌کند که کل میدان در هر نسبت تصویری دیده شود */
 function applyFraming(resetAngle) {
-  const { fov, dist } = framingForViewport();
+  const { fov, dist, portrait } = framingForViewport();
   camera.fov = fov;
   camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
   camera.updateProjectionMatrix();
   rig.targetDist = dist;
   rig.dist = dist;
   if (resetAngle) {
-    rig.targetYaw = -0.75;
-    rig.yaw = -0.75;
-    rig.targetPitch = 0.22;
-    rig.pitch = 0.22;
+    rig.targetYaw = portrait ? -1.2 : -0.85;
+    rig.yaw = rig.targetYaw;
+    rig.targetPitch = portrait ? 0.1 : 0.08;
+    rig.pitch = rig.targetPitch;
+    if (camOverride.length >= 6) {
+      rig.targetDist = rig.dist = camOverride[0];
+      rig.targetYaw = rig.yaw = camOverride[1];
+      rig.targetPitch = rig.pitch = camOverride[2];
+      rig.target.set(camOverride[3], camOverride[4], camOverride[5]);
+      rig.desiredTarget.copy(rig.target);
+      if (camOverride[6]) {
+        camera.fov = camOverride[6];
+        camera.updateProjectionMatrix();
+      }
+    }
   }
 }
 
@@ -897,11 +929,12 @@ function onResize() {
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', () => setTimeout(onResize, 120));
 
-const clock = new THREE.Clock();
+let lastFrame = performance.now();
 
-function animate() {
+function animate(now = performance.now()) {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const dt = Math.min(Math.max(0, (now - lastFrame) / 1000), 0.05);
+  lastFrame = now;
 
   if (phys && state.mode !== 'menu' && state.mode !== 'over') {
     phys.step(dt);
@@ -921,10 +954,11 @@ function animate() {
 /* ------------------------------------------------------------------ */
 
 function init() {
-  els.btnSound.textContent = progress.muted ? '🔇' : '🔊';
+  els.btnSound.classList.toggle('muted', progress.muted);
   sfx.setMuted(progress.muted);
   buildMenu();
-  loadLevel(0);
+  const startLevel = clamp(Number(urlParams.get('level') || 1) - 1, 0, LEVELS.length - 1);
+  loadLevel(Number.isFinite(startLevel) ? startLevel : 0);
   openMenu();
   animate();
 
@@ -933,6 +967,15 @@ function init() {
     setTimeout(() => els.loading.remove(), 500);
   });
 }
+
+// دسترسی برای تست‌های خودکار (بدون تأثیر روی بازی)
+window.__ag3d = {
+  state,
+  get physics() {
+    return phys;
+  },
+  levels: LEVELS,
+};
 
 try {
   init();

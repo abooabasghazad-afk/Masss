@@ -7,6 +7,7 @@ import { MATERIALS } from './physics.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _a = new THREE.Vector3();
+const _b = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 
@@ -121,14 +122,14 @@ export function createRenderer(canvas) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   return renderer;
 }
 
 export function createWorld() {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xcfe8ff, 120, 320);
+  scene.fog = new THREE.Fog(0xd7ecff, 70, 380);
 
   const camera = new THREE.PerspectiveCamera(
     48,
@@ -245,6 +246,28 @@ function makeCloud() {
   return g;
 }
 
+// ناحیه‌ای که دوربین پیش‌فرض در آن قرار می‌گیرد؛ برای جلوگیری از قرار گرفتن
+// درخت/سنگ بزرگ در نزدیکی دوربین
+const CAM_XZ = { x: -31, z: 29 };
+
+function nearCamera(x, z, radius = 22) {
+  return Math.hypot(x - CAM_XZ.x, z - CAM_XZ.z) < radius;
+}
+
+// آیا این نقطه در خط دید دوربین تا تیرکمان قرار می‌گیرد؟ (تا روی پرنده نیفتد)
+function onSightline(x, z, pad = 9) {
+  const ax = CAM_XZ.x;
+  const az = CAM_XZ.z;
+  const dx = -11 - ax;
+  const dz = -az;
+  const len2 = dx * dx + dz * dz;
+  const t = ((x - ax) * dx + (z - az) * dz) / len2;
+  if (t < 0.3 || t > 2.6) return false;
+  const px = ax + dx * t;
+  const pz = az + dz * t;
+  return Math.hypot(x - px, z - pz) < pad;
+}
+
 export function buildEnvironment(scene) {
   scene.add(makeSky());
 
@@ -284,6 +307,7 @@ export function buildEnvironment(scene) {
     const x = Math.cos(a) * dist;
     const z = Math.sin(a) * dist;
     if (x > -24 && x < 30 && Math.abs(z) < 26) continue;
+    if (nearCamera(x, z, 26) || onSightline(x, z, 10)) continue;
     const tree = makeTree(0.8 + Math.random() * 0.9);
     tree.position.set(x, 0, z);
     tree.rotation.y = Math.random() * Math.PI;
@@ -297,12 +321,33 @@ export function buildEnvironment(scene) {
     const dist = 20 + Math.random() * 45;
     const x = Math.cos(a) * dist;
     const z = Math.sin(a) * dist;
-    if (x > -20 && x < 24 && Math.abs(z) < 16) continue;
+    if (x > -24 && x < 26 && Math.abs(z) < 15) continue;
+    if (Math.hypot(x + 11, z) < 15) continue;
+    if (nearCamera(x, z, 24) || onSightline(x, z, 9)) continue;
     const bush = new THREE.Mesh(new THREE.SphereGeometry(0.7 + Math.random() * 0.9, 9, 7), bushMat);
     bush.position.set(x, 0.45, z);
     bush.scale.y = 0.8;
     bush.castShadow = true;
     scene.add(bush);
+  }
+
+  // سنگ‌های پراکنده
+  const rockMat = new THREE.MeshLambertMaterial({ color: 0x9aa3a0 });
+  for (let i = 0; i < 22; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const dist = 15 + Math.random() * 50;
+    const x = Math.cos(a) * dist;
+    const z = Math.sin(a) * dist;
+    if (x > -24 && x < 26 && Math.abs(z) < 15) continue;
+    if (Math.hypot(x + 11, z) < 15) continue;
+    if (nearCamera(x, z, 24) || onSightline(x, z, 9)) continue;
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.8, 0), rockMat);
+    rock.position.set(x, 0.18, z);
+    rock.rotation.set(Math.random(), Math.random() * 6, Math.random());
+    rock.scale.y = 0.7;
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    scene.add(rock);
   }
 
   // ابرها
@@ -320,10 +365,11 @@ export function buildEnvironment(scene) {
   // تپه‌های دور
   const hillMat = new THREE.MeshLambertMaterial({ color: 0x6eb34c });
   const hills = [
-    [-95, 0, -120, 70, 26, 55],
-    [110, 0, -70, 80, 30, 60],
-    [30, 0, -160, 110, 34, 70],
-    [-140, 0, 40, 90, 28, 65],
+    [-300, 0, -360, 190, 22, 140],
+    [320, 0, -260, 220, 24, 150],
+    [40, 0, -440, 280, 26, 190],
+    [-400, 0, 60, 180, 18, 130],
+    [360, 0, 200, 210, 20, 150],
   ];
   for (const [x, y, z, sx, sy, sz] of hills) {
     const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), hillMat);
@@ -502,15 +548,29 @@ export function makeBirdMesh() {
   g.add(beak);
 
   // پرهای دم
-  for (const [y, z] of [
-    [0.08, 0],
-    [0.16, 0.12],
-    [0.0, -0.12],
+  for (const [y, z, s2] of [
+    [0.14, 0, 1.1],
+    [0.24, 0.16, 0.9],
+    [0.02, -0.16, 0.9],
   ]) {
-    const feather = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.34, 6), redDark);
-    feather.rotation.z = Math.PI / 2 + 0.25;
-    feather.position.set(-0.6, y, z);
+    const feather = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.42 * s2, 6), redDark);
+    feather.rotation.z = Math.PI / 2 + 0.45;
+    feather.position.set(-0.64, y, z);
+    feather.castShadow = true;
     g.add(feather);
+  }
+
+  // کاکل روی سر
+  for (const [x, z, tilt] of [
+    [0.02, 0, -0.25],
+    [-0.08, 0.12, 0.15],
+    [-0.08, -0.12, -0.6],
+  ]) {
+    const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.28, 6), redDark);
+    tuft.position.set(x, 0.56, z);
+    tuft.rotation.z = tilt;
+    tuft.castShadow = true;
+    g.add(tuft);
   }
 
   // پاها
@@ -531,8 +591,8 @@ export function makeBirdMesh() {
 
 export const SLING_ANCHOR = new THREE.Vector3(-11, 3.42, 0);
 export const SLING_TIPS = [
-  new THREE.Vector3(-11.05, 3.5, -0.55),
-  new THREE.Vector3(-11.05, 3.5, 0.55),
+  new THREE.Vector3(-11.02, 3.46, -0.82),
+  new THREE.Vector3(-11.02, 3.46, 0.82),
 ];
 
 export class Slingshot {
@@ -545,17 +605,25 @@ export class Slingshot {
     const bandBackMat = new THREE.MeshLambertMaterial({ color: 0x7a3c22 });
 
     // تنه
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2.5, 12), woodMat);
-    trunk.position.set(-11, 1.25, 0);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 2.1, 12), woodMat);
+    trunk.position.set(-11, 1.05, 0);
     trunk.castShadow = true;
     trunk.receiveShadow = true;
     this.group.add(trunk);
 
+    // گره/بند دور تنه
+    const wrap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 0.28, 12),
+      new THREE.MeshLambertMaterial({ color: 0x5f3a1c }),
+    );
+    wrap.position.set(-11, 1.95, 0);
+    this.group.add(wrap);
+
     // دو شاخه
     for (let i = 0; i < 2; i++) {
       const z = i === 0 ? -1 : 1;
-      const branch = cylinderBetween(0.16, woodMat);
-      setSegment(branch, new THREE.Vector3(-11, 2.2, z * 0.08), new THREE.Vector3(-11.05, 3.5, z * 0.55));
+      const branch = cylinderBetween(0.2, woodMat);
+      setSegment(branch, new THREE.Vector3(-11, 1.95, z * 0.1), new THREE.Vector3(-11.02, 3.46, z * 0.82));
       branch.castShadow = true;
       this.group.add(branch);
     }
@@ -575,19 +643,14 @@ export class Slingshot {
   }
 
   setBirdPos(pos) {
-    const anchor = SLING_ANCHOR;
-    if (pos) {
-      setSegment(this.bandFront, SLING_TIPS[0], pos);
-      setSegment(this.bandBack, SLING_TIPS[1], pos);
-      this.tuck.position.copy(pos);
-      this.tuck.lookAt(SLING_TIPS[0]);
-    } else {
-      _a.copy(anchor).add(new THREE.Vector3(0, 0, 0));
-      setSegment(this.bandFront, SLING_TIPS[0], _a);
-      setSegment(this.bandBack, SLING_TIPS[1], _a);
-      this.tuck.position.copy(_a);
-      this.tuck.lookAt(SLING_TIPS[0]);
-    }
+    const target = pos || SLING_ANCHOR;
+    // کش‌ها کمی پشت پرنده بسته می‌شوند تا دیده شوند
+    _a.set(target.x + 0.12, target.y, target.z - 0.46);
+    _b.set(target.x + 0.12, target.y, target.z + 0.46);
+    setSegment(this.bandFront, SLING_TIPS[0], _a);
+    setSegment(this.bandBack, SLING_TIPS[1], _b);
+    this.tuck.position.set(target.x - 0.35, target.y, target.z);
+    this.tuck.lookAt(SLING_TIPS[0]);
   }
 }
 
