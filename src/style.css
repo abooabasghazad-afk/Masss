@@ -483,3 +483,7 @@ html, body {
 }
 .tray-bird svg { width: 100%; height: 100%; display: block; }
 body { overscroll-behavior: none; }
+
+/* لینک نسخهٔ کلاسیک در فوتر منو */
+.classic-link { color: #ffb03a; text-decoration: none; border-bottom: 1px dashed currentColor; }
+.classic-link:hover { color: #ffd25e; }
