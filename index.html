@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#7ec9ff" />
+  <title>پرنده خشمگین ۳بعدی</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <!-- نوار بالای بازی -->
+    <header id="hud" class="hidden">
+      <div class="hud-side">
+        <button class="icon-btn" id="btn-menu" title="منوی اصلی" aria-label="منوی اصلی">☰</button>
+        <div class="level-badge">
+          <span id="level-number">مرحله ۱</span>
+          <span id="level-title">کلبه چوبی</span>
+        </div>
+      </div>
+
+      <div class="hud-score">
+        <span class="score-label">امتیاز</span>
+        <span id="score-value">۰</span>
+      </div>
+
+      <div class="hud-side hud-end">
+        <div id="birds-left" class="birds" aria-label="پرنده‌های باقی‌مانده"></div>
+        <button class="icon-btn" id="btn-sound" title="صدا" aria-label="صدا">🔊</button>
+        <button class="icon-btn" id="btn-restart" title="شروع دوباره" aria-label="شروع دوباره">↻</button>
+      </div>
+    </header>
+
+    <div id="power" class="hidden"><div id="power-fill"></div></div>
+
+    <div id="camera-controls">
+      <button data-cam="left" title="چرخش دوربین">⟲</button>
+      <button data-cam="right" title="چرخش دوربین">⟳</button>
+      <button data-cam="in" title="نزدیک‌تر">+</button>
+      <button data-cam="out" title="دورتر">−</button>
+    </div>
+
+    <div id="hint" class="hint hidden">پرنده را به عقب بکش و رها کن</div>
+
+    <div id="popups"></div>
+
+    <!-- صفحه شروع / منو -->
+    <section id="screen-menu" class="overlay">
+      <div class="panel menu-panel">
+        <div class="logo">
+          <span class="logo-bird" aria-hidden="true">
+            <span class="logo-eye"></span>
+            <span class="logo-beak"></span>
+          </span>
+          <div>
+            <h1>پرنده خشمگین <em>۳بعدی</em></h1>
+            <p class="tagline">تیرکمان را بکش، قلعه‌ها را ویران کن و خوک‌های سبز را از پا دربیار!</p>
+          </div>
+        </div>
+
+        <button id="btn-play" class="big-btn">شروع بازی</button>
+
+        <div class="section-label">مراحل</div>
+        <div id="menu-levels" class="level-grid"></div>
+
+        <p class="rotate-hint">📱 برای تجربه‌ی بهتر، گوشی را افقی بگیرید.</p>
+
+        <div class="menu-foot">
+          <button id="btn-help" class="ghost-btn">راهنمای بازی</button>
+          <span class="best-line">بهترین امتیاز کل: <strong id="total-best">۰</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- نتیجه -->
+    <section id="screen-result" class="overlay hidden">
+      <div class="panel result-panel">
+        <h2 id="result-title">برنده شدی!</h2>
+        <div class="stars" id="result-stars">
+          <span class="star">★</span>
+          <span class="star">★</span>
+          <span class="star">★</span>
+        </div>
+        <div class="result-score">
+          <span>امتیاز</span>
+          <strong id="result-score">۰</strong>
+        </div>
+        <p id="result-sub" class="result-sub"></p>
+        <div class="result-actions">
+          <button id="btn-next" class="big-btn">مرحله بعد</button>
+          <button id="btn-retry" class="ghost-btn">تلاش دوباره</button>
+          <button id="btn-home" class="ghost-btn">منوی اصلی</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- راهنما -->
+    <section id="screen-help" class="overlay hidden">
+      <div class="panel help-panel">
+        <h2>راهنمای بازی</h2>
+        <ul class="help-list">
+          <li><b>شلیک:</b> پرنده را با موس یا انگشت بگیر، به سمت پایین (و کمی چپ یا راست برای هدف‌گیری) بکش و رها کن. هرچه بیشتر بکشی، شوت قوی‌تر می‌شود.</li>
+          <li><b>نشانه‌گیری:</b> نقطه‌های زرد مسیر پرواز را نشان می‌دهند؛ از آن‌ها برای تنظیم زاویه، قدرت و جهت استفاده کن.</li>
+          <li><b>دوربین:</b> با کلیک راست (یا دکمه‌های گوشه صفحه) دوربین را بچرخان و با چرخ ماوس زوم کن. جهت شلیک به دوربین وابسته نیست.</li>
+          <li><b>هدف:</b> همه خوک‌های سبز را نابود کن. چوب راحت می‌شکند، سنگ سخت است و یخ با یک ضربه خرد می‌شود.</li>
+          <li><b>امتیاز:</b> هر پرنده‌ای که استفاده نکنی، ۱۰۰۰ امتیاز پاداش می‌گیرد.</li>
+          <li><b>میان‌بر:</b> کلید <kbd>R</kbd> برای شروع دوباره، <kbd>Esc</kbd> برای منو.</li>
+        </ul>
+        <div class="result-actions">
+          <button id="btn-help-close" class="big-btn">فهمیدم</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="loading" class="loading">در حال آماده‌سازی میدان…</div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "cannon-es": "./vendor/cannon-es.js"
+      }
+    }
+  </script>
+  <script type="module" src="./src/game.js"></script>
+</body>
+</html>
